@@ -44,26 +44,7 @@ function createEarthquakeServer(req) {
           mimeType: "text/html+skybridge",
           text: earthquakeHtml,
           _meta: {
-            "openai/widgetPrefersBorder": true,
-            "openai/widgetDomain": origin,
-            "openai/widgetCSP": {
-              connect_domains: [
-                origin,
-                "https://athenachat.bot",
-                "https://*.athenachat.bot",
-                "https://earthquake.usgs.gov"
-              ],
-              resource_domains: [
-                origin,
-                "https://athenachat.bot",
-                "https://*.athenachat.bot",
-                "https://*.oaistatic.com",
-                "https://unpkg.com",
-                "https://*.tile.openstreetmap.org",
-                "https://cdnjs.cloudflare.com",
-                "https://*.basemaps.cartocdn.com"
-              ]
-            }
+            "openai/widgetPrefersBorder": true
           }
         }
       ]
@@ -154,6 +135,12 @@ function createEarthquakeServer(req) {
               endTime,
               limit
             }
+          },
+          _meta: {
+            "openai/outputTemplate": "ui://widget/earthquake.html",
+            "ui": {
+              "resourceUri": "ui://widget/earthquake.html"
+            }
           }
         };
       } catch (err) {
@@ -173,6 +160,12 @@ function createEarthquakeServer(req) {
               startTime,
               endTime,
               limit
+            }
+          },
+          _meta: {
+            "openai/outputTemplate": "ui://widget/earthquake.html",
+            "ui": {
+              "resourceUri": "ui://widget/earthquake.html"
             }
           }
         };
