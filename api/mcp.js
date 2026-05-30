@@ -15,7 +15,18 @@ try {
   earthquakeHtml = `<h1>Error loading Earthquake Widget template: ${error.message}</h1>`;
 }
 
-function createEarthquakeServer() {
+function createEarthquakeServer(req) {
+  let origin = "https://athenachat.bot";
+  if (req && req.headers) {
+    if (req.headers.origin) {
+      origin = req.headers.origin;
+    } else if (req.headers.referer) {
+      try {
+        origin = new URL(req.headers.referer).origin;
+      } catch (e) {}
+    }
+  }
+
   const server = new McpServer({
     name: "earthquake-explorer",
     version: "1.0.0"
@@ -34,14 +45,17 @@ function createEarthquakeServer() {
           text: earthquakeHtml,
           _meta: {
             "openai/widgetPrefersBorder": true,
-            "openai/widgetDomain": "https://athenachat.bot",
+            "openai/widgetDomain": origin,
             "openai/widgetCSP": {
               connect_domains: [
+                origin,
                 "https://athenachat.bot",
                 "https://*.athenachat.bot",
                 "https://earthquake.usgs.gov"
               ],
               resource_domains: [
+                origin,
+                "https://athenachat.bot",
                 "https://*.athenachat.bot",
                 "https://*.oaistatic.com",
                 "https://unpkg.com",
@@ -182,7 +196,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const server = createEarthquakeServer();
+  const server = createEarthquakeServer(req);
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
