@@ -63,11 +63,11 @@ function createEarthquakeServer() {
       title: "Get Earthquakes",
       description: "Query and retrieve recent earthquakes by magnitude, place, depth, and time range.",
       inputSchema: {
-        minMagnitude: z.number().optional().default(2.5),
-        maxMagnitude: z.number().optional(),
+        minMagnitude: z.coerce.number().optional().default(2.5),
+        maxMagnitude: z.coerce.number().optional(),
         startTime: z.string().optional(),
         endTime: z.string().optional(),
-        limit: z.number().optional().default(100),
+        limit: z.coerce.number().optional().default(100),
       },
       _meta: {
         "openai/outputTemplate": "ui://widget/earthquake.html",
