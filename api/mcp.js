@@ -34,13 +34,15 @@ function createEarthquakeServer() {
           text: earthquakeHtml,
           _meta: {
             "openai/widgetPrefersBorder": true,
-            "openai/widgetDomain": "https://chatgpt.com",
+            "openai/widgetDomain": "https://athenachat.bot",
             "openai/widgetCSP": {
               connect_domains: [
-                "https://chatgpt.com",
+                "https://athenachat.bot",
+                "https://*.athenachat.bot",
                 "https://earthquake.usgs.gov"
               ],
               resource_domains: [
+                "https://*.athenachat.bot",
                 "https://*.oaistatic.com",
                 "https://unpkg.com",
                 "https://*.tile.openstreetmap.org",
@@ -69,6 +71,7 @@ function createEarthquakeServer() {
       },
       _meta: {
         "openai/outputTemplate": "ui://widget/earthquake.html",
+        "openai/widgetAccessible": true,
         "openai/toolInvocation/invoking": "Searching USGS earthquake database",
         "openai/toolInvocation/invoked": "Retrieved earthquakes from USGS",
       }
