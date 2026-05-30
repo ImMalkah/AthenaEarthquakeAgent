@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Earthquake Activity Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-main: #0d0e12;
+        --bg-panel: #161820;
+        --bg-card: #202430;
+        --border-glass: rgba(255, 255, 255, 0.08);
+        --border-active: #00f2fe;
+        --text-primary: #f5f6fa;
+        --text-secondary: #a0a5b5;
+        --text-muted: #686d7d;
+        
+        /* Magnitude Colors */
+        --mag-low: #00f2fe;
+        --mag-med: #ffd200;
+        --mag-high: #ff5f6d;
+        --mag-extreme: #ff0844;
+        
+        --font-outfit: 'Outfit', sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-outfit);
+        background: var(--bg-main);
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow-x: hidden;
+        padding: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+      }
+
+      main {
+        width: 100%;
+        max-width: 1200px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-glass);
+        border-radius: 20px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* Header Styling */
+      header {
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border-glass);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(22, 24, 32, 0.8);
+        backdrop-filter: blur(10px);
+        z-index: 10;
+      }
+
+      .logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .status-pulse {
+        width: 10px;
+        height: 10px;
+        background: var(--border-active);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--border-active);
+        animation: pulse 2s infinite;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        background: linear-gradient(90deg, #00f2fe, #4facfe);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .summary-stats {
+        display: flex;
+        gap: 20px;
+      }
+
+      .stat-item {
+        text-align: right;
+      }
+
+      .stat-val {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+      }
+
+      .stat-lbl {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      /* Dashboard Layout */
+      .dashboard-body {
+        display: flex;
+        flex: 1;
+        min-height: 520px;
+      }
+
+      /* Left Side: Map and Charts */
+      .main-content {
+        flex: 3;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--border-glass);
+        position: relative;
+      }
+
+      #map-container {
+        flex: 1;
+        position: relative;
+        min-height: 320px;
+        background: #0f1015;
+      }
+
+      #leaflet-map {
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      /* Fallback SVG Sonar Grid Map */
+      .fallback-map {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 0;
+        pointer-events: all;
+      }
+
+      .fallback-grid {
+        width: 100%;
+        height: 100%;
+        stroke: rgba(255, 255, 255, 0.03);
+        stroke-width: 1;
+      }
+
+      .fallback-point {
+        cursor: pointer;
+        transition: transform 0.2s, r 0.2s;
+      }
+      .fallback-point:hover {
+        transform: scale(1.3);
+      }
+
+      .sonar-circle {
+        fill: none;
+        stroke: var(--border-active);
+        stroke-width: 1;
+        opacity: 0.8;
+        transform-origin: center;
+        animation: sonar 3s infinite linear;
+      }
+
+      /* Visual Chart Row */
+      .chart-container {
+        height: 160px;
+        border-top: 1px solid var(--border-glass);
+        background: rgba(13, 14, 18, 0.5);
+        padding: 12px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .chart-title {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+      }
+
+      .chart-canvas-container {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+      }
+
+      .scatter-plot {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Right Side: Filters, Lists, Details */
+      .sidebar {
+        flex: 2;
+        display: flex;
+        flex-direction: column;
+        background: rgba(13, 14, 18, 0.3);
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+      }
+
+      .panel-section {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-glass);
+      }
+
+      .section-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        letter-spacing: 0.5px;
+      }
+
+      /* Filters Controls */
+      .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .input-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .input-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .text-input {
+        background: var(--bg-card);
+        border: 1px solid var(--border-glass);
+        border-radius: 8px;
+        padding: 8px 12px;
+        color: var(--text-primary);
+        font-family: var(--font-outfit);
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .text-input:focus {
+        border-color: var(--border-active);
+      }
+
+      .range-val {
+        font-family: var(--font-mono);
+        color: var(--border-active);
+      }
+
+      .slider-input {
+        width: 100%;
+        height: 6px;
+        background: var(--bg-card);
+        border-radius: 3px;
+        outline: none;
+        -webkit-appearance: none;
+      }
+
+      .slider-input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--border-active);
+        cursor: pointer;
+        box-shadow: 0 0 8px var(--border-active);
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .btn {
+        flex: 1;
+        background: var(--bg-card);
+        border: 1px solid var(--border-glass);
+        color: var(--text-secondary);
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: var(--font-outfit);
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+      }
+
+      .btn.primary {
+        background: linear-gradient(135deg, #00f2fe, #4facfe);
+        border: none;
+        color: #0b0c10;
+        font-weight: 700;
+        box-shadow: 0 4px 15px rgba(0, 242, 254, 0.2);
+      }
+
+      .btn.primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4);
+      }
+
+      /* List view */
+      .earthquake-list {
+        list-style: none;
+        overflow-y: auto;
+        max-height: 250px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .list-item {
+        background: var(--bg-card);
+        border: 1px solid var(--border-glass);
+        border-radius: 10px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .list-item:hover {
+        transform: translateX(4px);
+        border-color: rgba(255, 255, 255, 0.15);
+      }
+
+      .list-item.selected {
+        border-color: var(--border-active);
+        box-shadow: 0 0 10px rgba(0, 242, 254, 0.15);
+        background: rgba(0, 242, 254, 0.03);
+      }
+
+      .mag-badge {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 0.95rem;
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .item-details {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .item-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .item-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      /* Detail panel section */
+      .detail-card {
+        background: linear-gradient(135deg, rgba(32, 36, 48, 0.8), rgba(22, 24, 32, 0.8));
+        border: 1px solid var(--border-glass);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .detail-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        line-height: 1.3;
+      }
+
+      .detail-badge-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .badge {
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-glass);
+      }
+
+      .badge.tsunami {
+        background: rgba(255, 8, 68, 0.1);
+        color: #ff0844;
+        border-color: rgba(255, 8, 68, 0.2);
+        box-shadow: 0 0 5px rgba(255, 8, 68, 0.1);
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 4px;
+      }
+
+      .detail-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+      }
+
+      .detail-val {
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        font-weight: 700;
+        margin-top: 2px;
+      }
+
+      .no-selection {
+        text-align: center;
+        padding: 30px;
+        color: var(--text-muted);
+        font-style: italic;
+        font-size: 0.85rem;
+        border: 1px dashed var(--border-glass);
+        border-radius: 12px;
+      }
+
+      /* Animations */
+      @keyframes pulse {
+        0% { transform: scale(0.9); opacity: 0.6; }
+        50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 14px var(--border-active); }
+        100% { transform: scale(0.9); opacity: 0.6; }
+      }
+
+      @keyframes sonar {
+        0% { r: 10px; opacity: 1; }
+        100% { r: 120px; opacity: 0; }
+      }
+
+      /* Scrollbar Styling */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border-glass);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      /* Responsive Styling */
+      @media (max-width: 768px) {
+        body {
+          padding: 8px;
+        }
+        .dashboard-body {
+          flex-direction: column;
+          min-height: auto;
+        }
+        .main-content {
+          border-right: none;
+          border-bottom: 1px solid var(--border-glass);
+        }
+        #map-container {
+          height: 280px;
+        }
+        .sidebar {
+          max-height: none;
+        }
+      }
+    </style>
+    <!-- Dynamic CSS for Leaflet dynamically added if loader works -->
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="logo-group">
+          <div class="status-pulse"></div>
+          <h1>SEISMIC ACTIVITY EXPLORER</h1>
+        </div>
+        <div class="summary-stats">
+          <div class="stat-item">
+            <div id="stat-total" class="stat-val">0</div>
+            <div class="stat-lbl">Events</div>
+          </div>
+          <div class="stat-item">
+            <div id="stat-max-mag" class="stat-val">-</div>
+            <div class="stat-lbl">Max Mag</div>
+          </div>
+          <div class="stat-item">
+            <div id="stat-avg-mag" class="stat-val">-</div>
+            <div class="stat-lbl">Avg Mag</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="dashboard-body">
+        <!-- Left Column: Map + Charts -->
+        <div class="main-content">
+          <div id="map-container">
+            <!-- Leaflet Target -->
+            <div id="leaflet-map"></div>
+
+            <!-- Fallback Radar SVG Map (used if CDN blocked or loads fallback) -->
+            <div id="svg-map" class="fallback-map">
+              <svg class="fallback-grid" viewBox="-180 -90 360 180" preserveAspectRatio="none">
+                <!-- Latitude grid lines -->
+                <line x1="-180" y1="-60" x2="180" y2="-60" />
+                <line x1="-180" y1="-30" x2="180" y2="-30" />
+                <line x1="-180" y1="0" x2="180" y2="0" stroke="rgba(255,255,255,0.08)" />
+                <line x1="-180" y1="30" x2="180" y2="30" />
+                <line x1="-180" y1="60" x2="180" y2="60" />
+                
+                <!-- Longitude grid lines -->
+                <line x1="-150" y1="-90" x2="-150" y2="90" />
+                <line x1="-120" y1="-90" x2="-120" y2="90" />
+                <line x1="-90" y1="-90" x2="-90" y2="90" />
+                <line x1="-60" y1="-90" x2="-60" y2="90" />
+                <line x1="-30" y1="-90" x2="-30" y2="90" />
+                <line x1="0" y1="-90" x2="0" y2="90" stroke="rgba(255,255,255,0.08)" />
+                <line x1="30" y1="-90" x2="30" y2="90" />
+                <line x1="60" y1="-90" x2="60" y2="90" />
+                <line x1="90" y1="-90" x2="90" y2="90" />
+                <line x1="120" y1="-90" x2="120" y2="90" />
+                <line x1="150" y1="-90" x2="150" y2="90" />
+
+                <!-- Equator / Prime Meridian text -->
+                <text x="5" y="-3" fill="rgba(255,255,255,0.15)" font-size="6" font-family="sans-serif">Equator</text>
+                
+                <!-- SVG map plots dynamically rendered here -->
+                <g id="svg-markers"></g>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Scatter Plot Chart (Magnitude vs. Depth) -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <div class="chart-title">Magnitude vs. Depth (km)</div>
+              <div class="chart-title" style="font-size:0.7rem; color:var(--text-secondary)">Click dots to inspect</div>
+            </div>
+            <div class="chart-canvas-container">
+              <!-- Render pure HTML/SVG Scatter Chart -->
+              <svg class="scatter-plot" id="scatter-chart" viewBox="0 0 600 120" preserveAspectRatio="none">
+                <!-- Chart grid lines -->
+                <line x1="0" y1="20" x2="600" y2="20" stroke="rgba(255,255,255,0.04)" />
+                <line x1="0" y1="50" x2="600" y2="50" stroke="rgba(255,255,255,0.04)" />
+                <line x1="0" y1="80" x2="600" y2="80" stroke="rgba(255,255,255,0.04)" />
+                <line x1="0" y1="110" x2="600" y2="110" stroke="rgba(255,255,255,0.08)" />
+                <g id="chart-dots"></g>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Sidebar (Filters + List + Details) -->
+        <div class="sidebar">
+          <!-- Filters Section -->
+          <div class="panel-section">
+            <div class="section-title">Query & Filter</div>
+            <div class="filter-grid">
+              <!-- Text search -->
+              <div class="input-wrapper">
+                <div class="input-label">Filter Location</div>
+                <input id="search-place" type="text" class="text-input" placeholder="e.g. Japan, California" />
+              </div>
+              
+              <!-- Magnitude slider -->
+              <div class="input-wrapper">
+                <div class="input-label">
+                  <span>Min Magnitude</span>
+                  <span id="mag-val-lbl" class="range-val">2.5</span>
+                </div>
+                <input id="filter-mag" type="range" class="slider-input" min="2.0" max="8.0" step="0.1" value="2.5" />
+              </div>
+
+              <!-- Depth Filter Buttons -->
+              <div class="input-wrapper">
+                <div class="input-label">Depth Filter</div>
+                <div class="btn-row">
+                  <button id="depth-all" class="btn active">All</button>
+                  <button id="depth-shallow" class="btn">&lt; 50km</button>
+                  <button id="depth-deep" class="btn">&ge; 50km</button>
+                </div>
+              </div>
+
+              <div class="btn-row" style="margin-top: 8px;">
+                <button id="btn-fetch-mcp" class="btn primary">Server Fetch (USGS)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- List Section -->
+          <div class="panel-section" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="section-title">Earthquakes (<span id="event-count">0</span>)</div>
+            <ul id="eq-list" class="earthquake-list">
+              <!-- Dynamic List Items -->
+            </ul>
+          </div>
+
+          <!-- Details Section -->
+          <div class="panel-section">
+            <div class="section-title">Event Inspection</div>
+            <div id="inspection-pane">
+              <div class="no-selection">Select an earthquake on the map, chart, or list to inspect details.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Scripting for interactions and MCP communication -->
+    <script type="module">
+      let earthquakes = [];
+      let filteredEarthquakes = [];
+      let selectedId = null;
+      let map = null;
+      let mapMarkers = [];
+      let leafletLoaded = false;
+
+      // DOM Elements
+      const searchPlaceEl = document.querySelector("#search-place");
+      const filterMagEl = document.querySelector("#filter-mag");
+      const magValLbl = document.querySelector("#mag-val-lbl");
+      
+      const depthAllBtn = document.querySelector("#depth-all");
+      const depthShallowBtn = document.querySelector("#depth-shallow");
+      const depthDeepBtn = document.querySelector("#depth-deep");
+      
+      const btnFetchMcp = document.querySelector("#btn-fetch-mcp");
+      const listEl = document.querySelector("#eq-list");
+      const inspectionPane = document.querySelector("#inspection-pane");
+      
+      const statTotal = document.querySelector("#stat-total");
+      const statMaxMag = document.querySelector("#stat-max-mag");
+      const statAvgMag = document.querySelector("#stat-avg-mag");
+      const eventCount = document.querySelector("#event-count");
+      
+      const svgMarkersGroup = document.querySelector("#svg-markers");
+      const chartDotsGroup = document.querySelector("#chart-dots");
+      
+      let depthFilter = "all"; // all, shallow (<50), deep (>=50)
+
+      // Initialize dataset from globals
+      const initData = () => {
+        const toolOutput = window.openai?.toolOutput;
+        if (toolOutput?.earthquakes) {
+          earthquakes = toolOutput.earthquakes;
+        } else {
+          // Dummy data fallback for local standalone testing
+          earthquakes = [
+            { id: "1", magnitude: 4.8, place: "15km W of Tokyo, Japan", time: Date.now() - 3600000 * 2, depth: 32, lat: 35.6895, lng: 139.6917, tsunami: 0 },
+            { id: "2", magnitude: 6.2, place: "Off the coast of Oregon", time: Date.now() - 3600000 * 5, depth: 10, lat: 44.5, lng: -125.0, tsunami: 1 },
+            { id: "3", magnitude: 3.1, place: "8km E of San Jose, California", time: Date.now() - 3600000 * 8, depth: 8, lat: 37.3382, lng: -121.8863, tsunami: 0 },
+            { id: "4", magnitude: 5.5, place: "South of Alaska", time: Date.now() - 3600000 * 12, depth: 110, lat: 60.1, lng: -149.2, tsunami: 0 },
+            { id: "5", magnitude: 7.1, place: "Vanuatu Region", time: Date.now() - 3600000 * 24, depth: 180, lat: -15.5, lng: 167.2, tsunami: 1 }
+          ];
+        }
+        
+        // Match initial slider/inputs to backend request if supplied
+        if (toolOutput?.query?.minMagnitude) {
+          filterMagEl.value = toolOutput.query.minMagnitude;
+          magValLbl.textContent = toolOutput.query.minMagnitude;
+        }
+
+        applyFilters();
+      };
+
+      // Get color code by magnitude
+      const getMagColor = (mag) => {
+        if (mag < 3.0) return "var(--mag-low)";
+        if (mag < 4.5) return "var(--mag-med)";
+        if (mag < 6.0) return "var(--mag-high)";
+        return "var(--mag-extreme)";
+      };
+
+      // Set global counters
+      const updateStats = () => {
+        statTotal.textContent = filteredEarthquakes.length;
+        eventCount.textContent = filteredEarthquakes.length;
+        
+        if (filteredEarthquakes.length > 0) {
+          const magnitudes = filteredEarthquakes.map(eq => eq.magnitude);
+          const max = Math.max(...magnitudes).toFixed(1);
+          const avg = (magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length).toFixed(1);
+          statMaxMag.textContent = max;
+          statAvgMag.textContent = avg;
+        } else {
+          statMaxMag.textContent = "-";
+          statAvgMag.textContent = "-";
+        }
+      };
+
+      // Filter logic
+      const applyFilters = () => {
+        const searchTerm = searchPlaceEl.value.toLowerCase().trim();
+        const minMag = parseFloat(filterMagEl.value);
+
+        filteredEarthquakes = earthquakes.filter(eq => {
+          const matchPlace = eq.place.toLowerCase().includes(searchTerm);
+          const matchMag = eq.magnitude >= minMag;
+          let matchDepth = true;
+          if (depthFilter === "shallow") matchDepth = eq.depth < 50;
+          if (depthFilter === "deep") matchDepth = eq.depth >= 50;
+          return matchPlace && matchMag && matchDepth;
+        });
+
+        // Ensure selectedId is still valid in filtered list
+        if (selectedId && !filteredEarthquakes.find(eq => eq.id === selectedId)) {
+          selectedId = null;
+        }
+
+        updateStats();
+        renderList();
+        renderMapMarkers();
+        renderScatterChart();
+        renderSelectedDetails();
+      };
+
+      // Render the scrollable list
+      const renderList = () => {
+        listEl.innerHTML = "";
+        
+        if (filteredEarthquakes.length === 0) {
+          listEl.innerHTML = `<li class="no-selection" style="width:100%; border:none;">No events match filters.</li>`;
+          return;
+        }
+
+        filteredEarthquakes.forEach(eq => {
+          const li = document.createElement("li");
+          li.className = `list-item ${selectedId === eq.id ? 'selected' : ''}`;
+          li.dataset.id = eq.id;
+          
+          const timeString = new Date(eq.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const dateString = new Date(eq.time).toLocaleDateString([], { month: 'short', day: 'numeric' });
+          const color = getMagColor(eq.magnitude);
+
+          li.innerHTML = `
+            <div class="mag-badge" style="background: ${color}15; color: ${color}; border: 1px solid ${color}40">
+              ${eq.magnitude.toFixed(1)}
+            </div>
+            <div class="item-details">
+              <div class="item-title">${eq.place}</div>
+              <div class="item-subtitle">Depth: ${eq.depth.toFixed(0)} km | ${dateString} ${timeString}</div>
+            </div>
+          `;
+
+          li.addEventListener("click", () => selectEarthquake(eq.id));
+          listEl.appendChild(li);
+        });
+      };
+
+      // Select an earthquake
+      const selectEarthquake = (id, skipMapPan = false) => {
+        selectedId = id;
+        
+        // Refresh selection styling in list
+        document.querySelectorAll(".list-item").forEach(li => {
+          if (li.dataset.id === id) {
+            li.classList.add("selected");
+            li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } else {
+            li.classList.remove("selected");
+          }
+        });
+
+        // Refresh selection in Scatter Chart
+        document.querySelectorAll(".chart-dot").forEach(circle => {
+          if (circle.dataset.id === id) {
+            circle.setAttribute("stroke", "var(--border-active)");
+            circle.setAttribute("stroke-width", "2");
+            circle.setAttribute("r", "8");
+          } else {
+            const mag = parseFloat(circle.dataset.mag);
+            circle.setAttribute("stroke", "rgba(0,0,0,0.5)");
+            circle.setAttribute("stroke-width", "0.5");
+            circle.setAttribute("r", String(Math.max(4, Math.min(8, mag * 1.2))));
+          }
+        });
+
+        // Refresh Selection on Map
+        const eq = filteredEarthquakes.find(e => e.id === id);
+        if (eq) {
+          if (leafletLoaded && map) {
+            if (!skipMapPan) {
+              map.setView([eq.lat, eq.lng], Math.max(map.getZoom(), 5), { animate: true });
+            }
+            // Trigger popup or marker highlight
+            const markerIndex = mapMarkers.findIndex(m => m.id === id);
+            if (markerIndex !== -1) {
+              mapMarkers[markerIndex].marker.openPopup();
+            }
+          } else {
+            // SVG Map Highlight
+            renderMapMarkers(); // Redraw SVG dots to render sonar wave
+          }
+        }
+
+        renderSelectedDetails();
+      };
+
+      // Render Selected Details card
+      const renderSelectedDetails = () => {
+        const eq = filteredEarthquakes.find(e => e.id === selectedId);
+        
+        if (!eq) {
+          inspectionPane.innerHTML = `<div class="no-selection">Select an earthquake on the map, chart, or list to inspect details.</div>`;
+          return;
+        }
+
+        const date = new Date(eq.time);
+        const color = getMagColor(eq.magnitude);
+        const tsunamiAlert = eq.tsunami === 1;
+
+        inspectionPane.innerHTML = `
+          <div class="detail-card">
+            <div class="detail-header">
+              <div>
+                <div class="detail-title">${eq.place}</div>
+                <div class="detail-badge-row">
+                  <span class="badge" style="color: ${color}; border-color: ${color}40">${eq.magnitude.toFixed(1)} Magnitude</span>
+                  ${tsunamiAlert ? '<span class="badge tsunami">Tsunami Hazard</span>' : ''}
+                </div>
+              </div>
+            </div>
+            
+            <div class="detail-grid">
+              <div>
+                <div class="detail-label">Depth</div>
+                <div class="detail-val">${eq.depth.toFixed(1)} km</div>
+              </div>
+              <div>
+                <div class="detail-label">Coordinates</div>
+                <div class="detail-val" style="font-size:0.8rem">${eq.lat.toFixed(3)}&deg;, ${eq.lng.toFixed(3)}&deg;</div>
+              </div>
+              <div>
+                <div class="detail-label">Date</div>
+                <div class="detail-val">${date.toLocaleDateString()}</div>
+              </div>
+              <div>
+                <div class="detail-label">Time (UTC)</div>
+                <div class="detail-val">${date.toLocaleTimeString()}</div>
+              </div>
+            </div>
+
+            <div class="btn-row" style="margin-top: 8px;">
+              <button id="btn-simulate" class="btn" style="border-color: rgba(0, 242, 254, 0.3); color: var(--border-active)">
+                Analyze Local Impact
+              </button>
+              <button id="btn-share" class="btn">
+                USGS Report
+              </button>
+            </div>
+          </div>
+        `;
+
+        document.querySelector("#btn-simulate").addEventListener("click", () => {
+          alert(`Impact simulation for M${eq.magnitude} earthquake at ${eq.depth}km depth:\n- Est. Shaking: ${eq.magnitude > 6 ? 'Violent/Extreme' : eq.magnitude > 4.5 ? 'Moderate/Strong' : 'Light'}\n- Est. Radius: ${Math.round(eq.magnitude * 25)} km`);
+        });
+
+        document.querySelector("#btn-share").addEventListener("click", () => {
+          if (window.openai?.openExternal) {
+            window.openai.openExternal(`https://earthquake.usgs.gov/earthquakes/eventpage/${eq.id}`);
+          } else {
+            window.open(`https://earthquake.usgs.gov/earthquakes/eventpage/${eq.id}`, "_blank");
+          }
+        });
+      };
+
+      // Render SVG Fallback / Sonar point markers
+      const renderMapMarkers = () => {
+        svgMarkersGroup.innerHTML = "";
+        
+        // Hide Leaflet layer if fallback map is active
+        if (leafletLoaded) {
+          document.querySelector("#svg-map").style.display = "none";
+          return;
+        }
+        document.querySelector("#svg-map").style.display = "flex";
+
+        filteredEarthquakes.forEach(eq => {
+          const x = eq.lng;
+          // SVG uses negative Y going down, latitude is positive going up
+          const y = -eq.lat;
+          const color = getMagColor(eq.magnitude);
+          const size = Math.max(3, Math.min(10, eq.magnitude * 1.2));
+
+          const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          
+          if (selectedId === eq.id) {
+            // Sonar waves for selected
+            const sonar = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            sonar.setAttribute("cx", String(x));
+            sonar.setAttribute("cy", String(y));
+            sonar.setAttribute("class", "sonar-circle");
+            sonar.setAttribute("style", `stroke: ${color}`);
+            group.appendChild(sonar);
+          }
+
+          const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          circle.setAttribute("cx", String(x));
+          circle.setAttribute("cy", String(y));
+          circle.setAttribute("r", String(size));
+          circle.setAttribute("fill", color);
+          circle.setAttribute("stroke", selectedId === eq.id ? "white" : "rgba(0,0,0,0.4)");
+          circle.setAttribute("stroke-width", selectedId === eq.id ? "1.5" : "0.5");
+          circle.setAttribute("class", "fallback-point");
+          
+          circle.addEventListener("click", () => selectEarthquake(eq.id));
+          group.appendChild(circle);
+          svgMarkersGroup.appendChild(group);
+        });
+      };
+
+      // Render HTML/SVG Scatter Chart (Magnitude vs. Depth)
+      const renderScatterChart = () => {
+        chartDotsGroup.innerHTML = "";
+
+        if (filteredEarthquakes.length === 0) return;
+
+        const maxDepth = Math.max(50, ...earthquakes.map(e => e.depth));
+        const minDepth = 0;
+        
+        // Bounds for plotting inside the SVG (width 600, height 120)
+        // Magnitude will map to X axis (2.0 to 8.0)
+        // Depth will map to Y axis (0 to maxDepth)
+        const plotWidth = 600;
+        const plotHeight = 120;
+        const padding = 20;
+
+        filteredEarthquakes.forEach(eq => {
+          const xPercent = (eq.magnitude - 2.0) / (8.0 - 2.0);
+          const x = padding + xPercent * (plotWidth - padding * 2);
+
+          const yPercent = eq.depth / maxDepth;
+          const y = padding + yPercent * (plotHeight - padding * 2);
+
+          const color = getMagColor(eq.magnitude);
+          const radius = selectedId === eq.id ? 8 : Math.max(4, Math.min(8, eq.magnitude * 1.2));
+
+          const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          circle.setAttribute("cx", String(x));
+          circle.setAttribute("cy", String(y));
+          circle.setAttribute("r", String(radius));
+          circle.setAttribute("fill", color);
+          circle.setAttribute("stroke", selectedId === eq.id ? "var(--border-active)" : "rgba(0,0,0,0.5)");
+          circle.setAttribute("stroke-width", selectedId === eq.id ? "2" : "0.5");
+          circle.setAttribute("class", "chart-dot");
+          circle.dataset.id = eq.id;
+          circle.dataset.mag = eq.magnitude;
+          
+          // Add a hover title
+          const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+          title.textContent = `M${eq.magnitude.toFixed(1)} - ${eq.depth.toFixed(0)}km depth - ${eq.place}`;
+          circle.appendChild(title);
+
+          circle.addEventListener("click", () => selectEarthquake(eq.id));
+          chartDotsGroup.appendChild(circle);
+        });
+      };
+
+      // Load Leaflet and setup map
+      const initLeafletMap = () => {
+        // Dynamically inject stylesheet
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+        document.head.appendChild(link);
+
+        // Dynamically inject script
+        const script = document.createElement("script");
+        script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+        script.onload = () => {
+          try {
+            leafletLoaded = true;
+            document.querySelector("#leaflet-map").style.display = "block";
+            document.querySelector("#svg-map").style.display = "none";
+            
+            // Dark thematic tiles for high tech aesthetic
+            map = L.map('leaflet-map', {
+              zoomControl: true,
+              attributionControl: false
+            }).setView([20, 0], 2);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+              maxZoom: 19
+            }).addTo(map);
+
+            renderMapMarkersLeaflet();
+          } catch (e) {
+            console.warn("Leaflet setup blocked or failed. Using SVG fallback coordinate radar.", e);
+            leafletLoaded = false;
+            document.querySelector("#leaflet-map").style.display = "none";
+            renderMapMarkers();
+          }
+        };
+        script.onerror = () => {
+          console.warn("Leaflet JS blocked by CSP/network. Standardizing on SVG Fallboard radar map.");
+          leafletLoaded = false;
+          document.querySelector("#leaflet-map").style.display = "none";
+          renderMapMarkers();
+        };
+        document.head.appendChild(script);
+      };
+
+      // Draw Leaflet markers
+      const renderMapMarkersLeaflet = () => {
+        if (!map) return;
+        
+        // Clear old markers
+        mapMarkers.forEach(m => map.removeLayer(m.marker));
+        mapMarkers = [];
+
+        filteredEarthquakes.forEach(eq => {
+          const color = getMagColor(eq.magnitude);
+          const radius = Math.max(6, eq.magnitude * 2.5);
+
+          const marker = L.circleMarker([eq.lat, eq.lng], {
+            radius: radius,
+            fillColor: color,
+            color: selectedId === eq.id ? '#ffffff' : color,
+            weight: selectedId === eq.id ? 2 : 1,
+            opacity: 0.8,
+            fillOpacity: 0.6
+          }).addTo(map);
+
+          // Popup content
+          marker.bindPopup(`
+            <div style="color:#ffffff; font-family:var(--font-outfit); font-size:12px; width:150px">
+              <strong style="color:${color}">M ${eq.magnitude.toFixed(1)} Earthquake</strong><br/>
+              <span>${eq.place}</span><br/>
+              <span style="color:var(--text-muted)">Depth: ${eq.depth.toFixed(0)} km</span>
+            </div>
+          `, { closeButton: false });
+
+          marker.on('click', () => {
+            selectEarthquake(eq.id, true);
+          });
+
+          mapMarkers.push({ id: eq.id, marker });
+        });
+      };
+
+      // Handle server fetch call (triggering MCP tool)
+      const triggerMcpFetch = async () => {
+        const minMagVal = parseFloat(filterMagEl.value);
+        btnFetchMcp.textContent = "Syncing with server...";
+        btnFetchMcp.disabled = true;
+
+        if (window.openai?.callTool) {
+          try {
+            const response = await window.openai.callTool("get_earthquakes", {
+              minMagnitude: minMagVal,
+              limit: 100
+            });
+            if (response?.structuredContent?.earthquakes) {
+              earthquakes = response.structuredContent.earthquakes;
+              applyFilters();
+            }
+          } catch (e) {
+            console.error("MCP tool invoke failed:", e);
+          } finally {
+            btnFetchMcp.textContent = "Server Fetch (USGS)";
+            btnFetchMcp.disabled = false;
+          }
+        } else {
+          // Local sandbox mode simulation
+          setTimeout(() => {
+            alert(`[MCP Offline] Simulating server fetch with minMagnitude: ${minMagVal}. Generating updated dataset.`);
+            earthquakes = earthquakes.filter(e => e.magnitude >= minMagVal);
+            applyFilters();
+            btnFetchMcp.textContent = "Server Fetch (USGS)";
+            btnFetchMcp.disabled = false;
+          }, 800);
+        }
+      };
+
+      // Set globals update event listener
+      const handleSetGlobals = (event) => {
+        const globals = event.detail?.globals;
+        if (globals?.toolOutput?.earthquakes) {
+          earthquakes = globals.toolOutput.earthquakes;
+          
+          if (globals.toolOutput.query?.minMagnitude) {
+            filterMagEl.value = globals.toolOutput.query.minMagnitude;
+            magValLbl.textContent = globals.toolOutput.query.minMagnitude;
+          }
+          applyFilters();
+        }
+      };
+
+      window.addEventListener("openai:set_globals", handleSetGlobals, { passive: true });
+
+      // Setup inputs event listeners
+      searchPlaceEl.addEventListener("input", applyFilters);
+      filterMagEl.addEventListener("input", (e) => {
+        magValLbl.textContent = parseFloat(e.target.value).toFixed(1);
+        applyFilters();
+      });
+
+      // Depth buttons filter toggling
+      const setDepthFilter = (type, btn) => {
+        depthFilter = type;
+        document.querySelectorAll(".btn-row .btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        
+        // CSS coloring active style
+        document.querySelectorAll(".btn-row .btn").forEach(b => {
+          b.style.borderColor = "var(--border-glass)";
+          b.style.color = "var(--text-secondary)";
+        });
+        btn.style.borderColor = "var(--border-active)";
+        btn.style.color = "var(--text-primary)";
+        
+        applyFilters();
+      };
+
+      depthAllBtn.addEventListener("click", () => setDepthFilter("all", depthAllBtn));
+      depthShallowBtn.addEventListener("click", () => setDepthFilter("shallow", depthShallowBtn));
+      depthDeepBtn.addEventListener("click", () => setDepthFilter("deep", depthDeepBtn));
+      
+      btnFetchMcp.addEventListener("click", triggerMcpFetch);
+
+      // Start everything
+      initData();
+      initLeafletMap();
+    </script>
+  </body>
+</html>
