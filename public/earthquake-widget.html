@@ -497,6 +497,15 @@
         100% { r: 120px; opacity: 0; }
       }
 
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .fadeIn {
+        animation: fadeIn 0.3s ease forwards;
+      }
+
       /* Scrollbar Styling */
       ::-webkit-scrollbar {
         width: 6px;
@@ -914,6 +923,10 @@
               </div>
             </div>
 
+            <!-- Simulation results container -->
+            <div id="simulation-result" style="display: none; margin-top: 12px; padding: 12px; background: rgba(0, 242, 254, 0.04); border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 8px; font-size: 0.85rem;">
+            </div>
+
             <div class="btn-row" style="margin-top: 8px;">
               <button id="btn-simulate" class="btn" style="border-color: rgba(0, 242, 254, 0.3); color: var(--border-active)">
                 Analyze Local Impact
@@ -926,7 +939,62 @@
         `;
 
         document.querySelector("#btn-simulate").addEventListener("click", () => {
-          alert(`Impact simulation for M${eq.magnitude} earthquake at ${eq.depth}km depth:\n- Est. Shaking: ${eq.magnitude > 6 ? 'Violent/Extreme' : eq.magnitude > 4.5 ? 'Moderate/Strong' : 'Light'}\n- Est. Radius: ${Math.round(eq.magnitude * 25)} km`);
+          const simEl = document.querySelector("#simulation-result");
+          if (simEl) {
+            let shakingText = "Light (II-III)";
+            let shakingColor = "var(--mag-low)";
+            if (eq.magnitude >= 6.5) {
+              shakingText = "Violent / Extreme (VIII+)";
+              shakingColor = "var(--mag-extreme)";
+            } else if (eq.magnitude >= 5.5) {
+              shakingText = "Strong / Very Strong (VI-VII)";
+              shakingColor = "var(--mag-high)";
+            } else if (eq.magnitude >= 4.5) {
+              shakingText = "Moderate / Strong (IV-V)";
+              shakingColor = "var(--mag-med)";
+            }
+
+            const distance = Math.sqrt(100*100 + eq.depth * eq.depth);
+            const pTime = (distance / 6.0).toFixed(1);
+            const sTime = (distance / 3.5).toFixed(1);
+
+            let estPopulation = "Low (Local)";
+            const placeLower = eq.place.toLowerCase();
+            if (placeLower.includes("off ") || placeLower.includes("ocean") || placeLower.includes("sea") || placeLower.includes("coast")) {
+              estPopulation = "Low (Marine/Coastal)";
+            } else if (eq.magnitude >= 6.5) {
+              estPopulation = "High (Urban Area)";
+            } else if (eq.magnitude >= 5.0) {
+              estPopulation = "Moderate (Regional)";
+            }
+
+            simEl.innerHTML = `
+              <div style="font-weight: 700; color: var(--border-active); margin-bottom: 6px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                <span class="status-pulse" style="width: 6px; height: 6px; animation-duration: 1s;"></span>
+                Local Impact Analysis
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                <div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Shaking Severity</div>
+                  <div style="font-weight: 600; color: ${shakingColor}; margin-top: 2px;">${shakingText}</div>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Impact Radius</div>
+                  <div style="font-weight: 600; color: var(--text-primary); margin-top: 2px;">~${Math.round(eq.magnitude * 25)} km</div>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Wave Arrival (P/S)</div>
+                  <div style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); margin-top: 2px;">${pTime}s / ${sTime}s</div>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Est. Population Exposure</div>
+                  <div style="font-weight: 600; color: var(--text-primary); margin-top: 2px;">${estPopulation}</div>
+                </div>
+              </div>
+            `;
+            simEl.style.display = "block";
+            simEl.className = "fadeIn";
+          }
         });
 
         document.querySelector("#btn-share").addEventListener("click", () => {
