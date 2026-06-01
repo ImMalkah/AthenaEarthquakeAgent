@@ -302,6 +302,41 @@ const httpServer = createServer(async (req, res) => {
   res.writeHead(404).end("Not Found");
 });
 
+// Keep-alive mechanism to prevent the localhost.run tunnel from sleeping/timing out due to inactivity
+function startTunnelKeepAlive() {
+  const tunnelLogPath = join(process.cwd(), "tunnel.log");
+  let tunnelUrl = null;
+
+  const pingInterval = setInterval(async () => {
+    if (!tunnelUrl) {
+      try {
+        const tunnelLog = readFileSync(tunnelLogPath, "utf8");
+        const match = tunnelLog.match(/https:\/\/[a-zA-Z0-9.-]+\.lhr\.life/);
+        if (match) {
+          tunnelUrl = match[0];
+          log(`[Keep-Alive] Extracted active tunnel URL for keep-alive pings: ${tunnelUrl}`);
+        }
+      } catch (e) {
+        // Log file might not exist or be empty yet
+      }
+    }
+
+    if (tunnelUrl) {
+      try {
+        log(`[Keep-Alive] Sending keep-alive ping to ${tunnelUrl}...`);
+        const res = await fetch(tunnelUrl);
+        log(`[Keep-Alive] Ping response: ${res.status}`);
+      } catch (err) {
+        log(`[Keep-Alive] Ping failed: ${err.message}`);
+      }
+    }
+  }, 120000); // Ping every 2 minutes
+
+  // Make sure it doesn't block node from exiting
+  pingInterval.unref();
+}
+
 httpServer.listen(port, () => {
   log(`Earthquake Local MCP server listening on http://localhost:${port}${MCP_PATH}`);
+  startTunnelKeepAlive();
 });
