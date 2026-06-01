@@ -725,11 +725,11 @@
         } else {
           // Dummy data fallback for local standalone testing
           earthquakes = [
-            { id: "1", magnitude: 4.8, place: "15km W of Tokyo, Japan", time: Date.now() - 3600000 * 2, depth: 32, lat: 35.6895, lng: 139.6917, tsunami: 0 },
-            { id: "2", magnitude: 6.2, place: "Off the coast of Oregon", time: Date.now() - 3600000 * 5, depth: 10, lat: 44.5, lng: -125.0, tsunami: 1 },
-            { id: "3", magnitude: 3.1, place: "8km E of San Jose, California", time: Date.now() - 3600000 * 8, depth: 8, lat: 37.3382, lng: -121.8863, tsunami: 0 },
-            { id: "4", magnitude: 5.5, place: "South of Alaska", time: Date.now() - 3600000 * 12, depth: 110, lat: 60.1, lng: -149.2, tsunami: 0 },
-            { id: "5", magnitude: 7.1, place: "Vanuatu Region", time: Date.now() - 3600000 * 24, depth: 180, lat: -15.5, lng: 167.2, tsunami: 1 }
+            { id: "1", magnitude: 4.8, place: "15km W of Tokyo, Japan", time: Date.now() - 3600000 * 2, depth: 32, lat: 35.6895, lng: 139.6917, tsunami: 0, alert: "green", felt: 180, sig: 350 },
+            { id: "2", magnitude: 6.2, place: "Off the coast of Oregon", time: Date.now() - 3600000 * 5, depth: 10, lat: 44.5, lng: -125.0, tsunami: 1, alert: "green", felt: 15, sig: 590 },
+            { id: "3", magnitude: 3.1, place: "8km E of San Jose, California", time: Date.now() - 3600000 * 8, depth: 8, lat: 37.3382, lng: -121.8863, tsunami: 0, alert: null, felt: 45, sig: 150 },
+            { id: "4", magnitude: 5.5, place: "South of Alaska", time: Date.now() - 3600000 * 12, depth: 110, lat: 60.1, lng: -149.2, tsunami: 0, alert: "green", felt: 8, sig: 460 },
+            { id: "5", magnitude: 7.1, place: "Vanuatu Region", time: Date.now() - 3600000 * 24, depth: 180, lat: -15.5, lng: 167.2, tsunami: 1, alert: "yellow", felt: 2, sig: 780 }
           ];
           lastQuery = { minMagnitude: 2.5 };
         }
@@ -958,37 +958,178 @@
             const pTime = (distance / 6.0).toFixed(1);
             const sTime = (distance / 3.5).toFixed(1);
 
-            let estPopulation = "Low (Local)";
-            const placeLower = eq.place.toLowerCase();
-            if (placeLower.includes("off ") || placeLower.includes("ocean") || placeLower.includes("sea") || placeLower.includes("coast")) {
-              estPopulation = "Low (Marine/Coastal)";
-            } else if (eq.magnitude >= 6.5) {
-              estPopulation = "High (Urban Area)";
-            } else if (eq.magnitude >= 5.0) {
-              estPopulation = "Moderate (Regional)";
+            // Felt reports
+            const feltReports = eq.felt !== null && eq.felt !== undefined 
+              ? Number(eq.felt).toLocaleString() + " reports" 
+              : "No felt reports submitted";
+
+            // Fatalities calculation based on PAGER alert level or estimates
+            let fatalitiesText = "0 (None)";
+            let fatalitiesColor = "var(--text-secondary)";
+            if (eq.alert === "green") {
+              fatalitiesText = "0 - 1 (Very Low)";
+              fatalitiesColor = "var(--mag-low)";
+            } else if (eq.alert === "yellow") {
+              fatalitiesText = "1 - 99 (Low)";
+              fatalitiesColor = "var(--mag-med)";
+            } else if (eq.alert === "orange") {
+              fatalitiesText = "100 - 999 (Significant)";
+              fatalitiesColor = "var(--mag-high)";
+            } else if (eq.alert === "red") {
+              fatalitiesText = "1,000+ (High Casualties)";
+              fatalitiesColor = "var(--mag-extreme)";
+            } else {
+              // Estimate if alert is null
+              const isOffshore = eq.place.toLowerCase().includes("off ") || eq.place.toLowerCase().includes("ocean") || eq.place.toLowerCase().includes("sea") || eq.place.toLowerCase().includes("coast");
+              if (isOffshore || eq.magnitude < 5.0) {
+                fatalitiesText = "0 (None)";
+              } else if (eq.magnitude < 6.0) {
+                fatalitiesText = "0 - 2 (Low)";
+                fatalitiesColor = "var(--mag-low)";
+              } else if (eq.magnitude < 7.0) {
+                fatalitiesText = "1 - 50 (Moderate)";
+                fatalitiesColor = "var(--mag-med)";
+              } else {
+                fatalitiesText = "50 - 500 (High)";
+                fatalitiesColor = "var(--mag-high)";
+              }
+            }
+
+            // Injuries estimation
+            let injuriesText = "0 (None)";
+            let injuriesColor = "var(--text-secondary)";
+            if (eq.alert === "green") {
+              injuriesText = "0 - 5 (Very Low)";
+              injuriesColor = "var(--mag-low)";
+            } else if (eq.alert === "yellow") {
+              injuriesText = "10 - 500 (Moderate)";
+              injuriesColor = "var(--mag-med)";
+            } else if (eq.alert === "orange") {
+              injuriesText = "500 - 5,000 (Severe)";
+              injuriesColor = "var(--mag-high)";
+            } else if (eq.alert === "red") {
+              injuriesText = "5,000+ (Extreme Casualties)";
+              injuriesColor = "var(--mag-extreme)";
+            } else {
+              // Estimate if alert is null
+              const isOffshore = eq.place.toLowerCase().includes("off ") || eq.place.toLowerCase().includes("ocean") || eq.place.toLowerCase().includes("sea") || eq.place.toLowerCase().includes("coast");
+              if (isOffshore || eq.magnitude < 4.5) {
+                injuriesText = "0 (None)";
+              } else if (eq.magnitude < 5.5) {
+                injuriesText = "0 - 10 (Low)";
+                injuriesColor = "var(--mag-low)";
+              } else if (eq.magnitude < 6.5) {
+                injuriesText = "10 - 250 (Moderate)";
+                injuriesColor = "var(--mag-med)";
+              } else {
+                injuriesText = "250 - 3,000 (High)";
+                injuriesColor = "var(--mag-high)";
+              }
+            }
+
+            // Structural damage estimation
+            let damageText = "None / Negligible";
+            let damageColor = "var(--text-secondary)";
+            if (eq.alert === "green") {
+              damageText = "Minimal (Minor cracks)";
+              damageColor = "var(--mag-low)";
+            } else if (eq.alert === "yellow") {
+              damageText = "Moderate (Masonry damage)";
+              damageColor = "var(--mag-med)";
+            } else if (eq.alert === "orange") {
+              damageText = "Severe structural failures";
+              damageColor = "var(--mag-high)";
+            } else if (eq.alert === "red") {
+              damageText = "Catastrophic (Widespread collapse)";
+              damageColor = "var(--mag-extreme)";
+            } else {
+              // Estimate if alert is null
+              const isOffshore = eq.place.toLowerCase().includes("off ") || eq.place.toLowerCase().includes("ocean") || eq.place.toLowerCase().includes("sea") || eq.place.toLowerCase().includes("coast");
+              if (isOffshore || eq.magnitude < 4.5) {
+                damageText = "None / Negligible";
+              } else if (eq.magnitude < 5.5) {
+                damageText = "Very light structural strain";
+                damageColor = "var(--mag-low)";
+              } else if (eq.magnitude < 6.5) {
+                damageText = "Light to moderate damage";
+                damageColor = "var(--mag-med)";
+              } else {
+                damageText = "Severe structural failures";
+                damageColor = "var(--mag-high)";
+              }
+            }
+
+            // Economic loss estimation
+            let economicText = "Negligible";
+            let economicColor = "var(--text-secondary)";
+            if (eq.alert === "green") {
+              economicText = "< $1M USD";
+              economicColor = "var(--mag-low)";
+            } else if (eq.alert === "yellow") {
+              economicText = "$1M - $100M USD";
+              economicColor = "var(--mag-med)";
+            } else if (eq.alert === "orange") {
+              economicText = "$100M - $1B USD";
+              economicColor = "var(--mag-high)";
+            } else if (eq.alert === "red") {
+              economicText = "> $1B USD";
+              economicColor = "var(--mag-extreme)";
+            } else {
+              // Estimate if alert is null
+              const isOffshore = eq.place.toLowerCase().includes("off ") || eq.place.toLowerCase().includes("ocean") || eq.place.toLowerCase().includes("sea") || eq.place.toLowerCase().includes("coast");
+              if (isOffshore || eq.magnitude < 4.5) {
+                economicText = "Negligible";
+              } else if (eq.magnitude < 5.5) {
+                economicText = "< $100K USD";
+                economicColor = "var(--mag-low)";
+              } else if (eq.magnitude < 6.5) {
+                economicText = "$100K - $10M USD";
+                economicColor = "var(--mag-med)";
+              } else {
+                economicText = "$10M - $500M USD";
+                economicColor = "var(--mag-high)";
+              }
             }
 
             simEl.innerHTML = `
-              <div style="font-weight: 700; color: var(--border-active); margin-bottom: 6px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+              <div style="font-weight: 700; color: var(--border-active); margin-bottom: 8px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
                 <span class="status-pulse" style="width: 6px; height: 6px; animation-duration: 1s;"></span>
                 Local Impact Analysis
               </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px; margin-bottom: 8px;">
                 <div>
-                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Shaking Severity</div>
+                  <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Shaking Severity</div>
                   <div style="font-weight: 600; color: ${shakingColor}; margin-top: 2px;">${shakingText}</div>
                 </div>
                 <div>
-                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Impact Radius</div>
-                  <div style="font-weight: 600; color: var(--text-primary); margin-top: 2px;">~${Math.round(eq.magnitude * 25)} km</div>
+                  <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Felt Reports</div>
+                  <div style="font-weight: 600; color: var(--text-primary); margin-top: 2px;">${feltReports}</div>
                 </div>
                 <div>
-                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Wave Arrival (P/S)</div>
-                  <div style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); margin-top: 2px;">${pTime}s / ${sTime}s</div>
+                  <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Est. Fatalities</div>
+                  <div style="font-weight: 600; color: ${fatalitiesColor}; margin-top: 2px;">${fatalitiesText}</div>
                 </div>
                 <div>
-                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Est. Population Exposure</div>
-                  <div style="font-weight: 600; color: var(--text-primary); margin-top: 2px;">${estPopulation}</div>
+                  <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Est. Injuries</div>
+                  <div style="font-weight: 600; color: ${injuriesColor}; margin-top: 2px;">${injuriesText}</div>
+                </div>
+                <div>
+                  <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Structural Damage</div>
+                  <div style="font-weight: 600; color: ${damageColor}; margin-top: 2px;">${damageText}</div>
+                </div>
+                <div>
+                  <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Economic Loss</div>
+                  <div style="font-weight: 600; color: ${economicColor}; margin-top: 2px;">${economicText}</div>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem;">
+                <div>
+                  <span style="color: var(--text-muted);">Impact Radius:</span>
+                  <span style="font-weight: 600; color: var(--text-secondary);"> ~${Math.round(eq.magnitude * 25)} km</span>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted);">P/S Wave Delay:</span>
+                  <span style="font-family: var(--font-mono); font-weight: 600; color: var(--text-secondary);"> ${pTime}s / ${sTime}s</span>
                 </div>
               </div>
             `;

@@ -144,7 +144,10 @@ function createEarthquakeServer(req) {
             depth: feature.geometry?.coordinates?.[2] ?? 0,
             lat: feature.geometry?.coordinates?.[1] ?? 0,
             lng: feature.geometry?.coordinates?.[0] ?? 0,
-            tsunami: feature.properties.tsunami ?? 0
+            tsunami: feature.properties.tsunami ?? 0,
+            alert: feature.properties.alert ?? null,
+            felt: feature.properties.felt ?? null,
+            sig: feature.properties.sig ?? 0
           };
         });
 
