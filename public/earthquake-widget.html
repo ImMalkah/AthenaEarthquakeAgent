@@ -970,28 +970,31 @@
               fatalitiesText = "0 - 1 (Very Low)";
               fatalitiesColor = "var(--mag-low)";
             } else if (eq.alert === "yellow") {
-              fatalitiesText = "1 - 99 (Low)";
+              fatalitiesText = "1 - 99 (Low/Moderate)";
               fatalitiesColor = "var(--mag-med)";
             } else if (eq.alert === "orange") {
-              fatalitiesText = "100 - 999 (Significant)";
+              fatalitiesText = "100 - 999 (Severe)";
               fatalitiesColor = "var(--mag-high)";
             } else if (eq.alert === "red") {
-              fatalitiesText = "1,000+ (High Casualties)";
+              fatalitiesText = "1,000+ (Catastrophic)";
               fatalitiesColor = "var(--mag-extreme)";
             } else {
-              // Estimate if alert is null
+              // Estimate if alert is null (historical or remote events)
               const isOffshore = eq.place.toLowerCase().includes("off ") || eq.place.toLowerCase().includes("ocean") || eq.place.toLowerCase().includes("sea") || eq.place.toLowerCase().includes("coast");
               if (isOffshore || eq.magnitude < 5.0) {
                 fatalitiesText = "0 (None)";
               } else if (eq.magnitude < 6.0) {
-                fatalitiesText = "0 - 2 (Low)";
+                fatalitiesText = "0 - 50 (Low)";
                 fatalitiesColor = "var(--mag-low)";
               } else if (eq.magnitude < 7.0) {
-                fatalitiesText = "1 - 50 (Moderate)";
+                fatalitiesText = "10 - 25,000 (Moderate to Severe)";
                 fatalitiesColor = "var(--mag-med)";
-              } else {
-                fatalitiesText = "50 - 500 (High)";
+              } else if (eq.magnitude < 8.0) {
+                fatalitiesText = "100 - 300,000+ (Catastrophic Potential)";
                 fatalitiesColor = "var(--mag-high)";
+              } else {
+                fatalitiesText = "1,000 - 500,000+ (Catastrophic)";
+                fatalitiesColor = "var(--mag-extreme)";
               }
             }
 
@@ -1016,14 +1019,17 @@
               if (isOffshore || eq.magnitude < 4.5) {
                 injuriesText = "0 (None)";
               } else if (eq.magnitude < 5.5) {
-                injuriesText = "0 - 10 (Low)";
+                injuriesText = "0 - 100 (Low)";
                 injuriesColor = "var(--mag-low)";
               } else if (eq.magnitude < 6.5) {
-                injuriesText = "10 - 250 (Moderate)";
+                injuriesText = "10 - 50,000 (Moderate)";
                 injuriesColor = "var(--mag-med)";
-              } else {
-                injuriesText = "250 - 3,000 (High)";
+              } else if (eq.magnitude < 7.5) {
+                injuriesText = "500 - 500,000+ (Severe/Extreme)";
                 injuriesColor = "var(--mag-high)";
+              } else {
+                injuriesText = "5,000 - 1,000,000+ (Extreme)";
+                injuriesColor = "var(--mag-extreme)";
               }
             }
 
@@ -1051,11 +1057,14 @@
                 damageText = "Very light structural strain";
                 damageColor = "var(--mag-low)";
               } else if (eq.magnitude < 6.5) {
-                damageText = "Light to moderate damage";
+                damageText = "Moderate (masonry damage)";
                 damageColor = "var(--mag-med)";
-              } else {
-                damageText = "Severe structural failures";
+              } else if (eq.magnitude < 7.5) {
+                damageText = "Severe structural collapse risk";
                 damageColor = "var(--mag-high)";
+              } else {
+                damageText = "Catastrophic widespread destruction";
+                damageColor = "var(--mag-extreme)";
               }
             }
 
@@ -1080,14 +1089,17 @@
               if (isOffshore || eq.magnitude < 4.5) {
                 economicText = "Negligible";
               } else if (eq.magnitude < 5.5) {
-                economicText = "< $100K USD";
+                economicText = "< $1M USD";
                 economicColor = "var(--mag-low)";
               } else if (eq.magnitude < 6.5) {
-                economicText = "$100K - $10M USD";
+                economicText = "$1M - $100M USD";
                 economicColor = "var(--mag-med)";
-              } else {
-                economicText = "$10M - $500M USD";
+              } else if (eq.magnitude < 7.5) {
+                economicText = "$100M - $10B+ USD";
                 economicColor = "var(--mag-high)";
+              } else {
+                economicText = "> $10B+ USD";
+                economicColor = "var(--mag-extreme)";
               }
             }
 
