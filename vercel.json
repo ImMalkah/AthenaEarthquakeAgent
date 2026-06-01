@@ -4,6 +4,10 @@
     {
       "source": "/mcp",
       "destination": "/api/mcp"
+    },
+    {
+      "source": "/mc",
+      "destination": "/api/mcp"
     }
   ]
 }

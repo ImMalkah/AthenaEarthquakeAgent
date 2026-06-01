@@ -216,7 +216,10 @@ function createEarthquakeServer(req = null) {
 }
 
 const port = Number(process.env.PORT ?? 8787);
-const MCP_PATH = "/mcp";
+
+function isMcpPath(pathname) {
+  return pathname === "/mcp" || pathname === "/mc" || pathname === "/mcp/" || pathname === "/mc/";
+}
 
 const httpServer = createServer(async (req, res) => {
   if (!req.url) {
@@ -240,7 +243,7 @@ const httpServer = createServer(async (req, res) => {
   };
   log(`Incoming HTTP ${req.method} request to ${req.url}`, reqMeta);
 
-  if (req.method === "OPTIONS" && url.pathname === MCP_PATH) {
+  if (req.method === "OPTIONS" && isMcpPath(url.pathname)) {
     log("Handling CORS OPTIONS preflight request");
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
@@ -264,7 +267,7 @@ const httpServer = createServer(async (req, res) => {
   }
 
   const MCP_METHODS = new Set(["POST", "GET", "DELETE"]);
-  if (url.pathname === MCP_PATH && req.method && MCP_METHODS.has(req.method)) {
+  if (isMcpPath(url.pathname) && req.method && MCP_METHODS.has(req.method)) {
     log(`Handling MCP request method ${req.method}`);
     
     // Set headers
@@ -337,6 +340,6 @@ function startTunnelKeepAlive() {
 }
 
 httpServer.listen(port, () => {
-  log(`Earthquake Local MCP server listening on http://localhost:${port}${MCP_PATH}`);
+  log(`Earthquake Local MCP server listening on http://localhost:${port}/mcp`);
   startTunnelKeepAlive();
 });
