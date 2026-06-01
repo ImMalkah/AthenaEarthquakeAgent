@@ -325,17 +325,18 @@ function startTunnelKeepAlive() {
   let tunnelUrl = null;
 
   const pingInterval = setInterval(async () => {
-    if (!tunnelUrl) {
-      try {
-        const tunnelLog = readFileSync(tunnelLogPath, "utf8");
-        const match = tunnelLog.match(/https:\/\/[a-zA-Z0-9.-]+\.lhr\.life/);
-        if (match) {
-          tunnelUrl = match[0];
-          log(`[Keep-Alive] Extracted active tunnel URL for keep-alive pings: ${tunnelUrl}`);
+    try {
+      const tunnelLog = readFileSync(tunnelLogPath, "utf8");
+      const matches = tunnelLog.match(/https:\/\/[a-zA-Z0-9.-]+\.lhr\.life/g);
+      if (matches && matches.length > 0) {
+        const latestUrl = matches[matches.length - 1];
+        if (latestUrl !== tunnelUrl) {
+          tunnelUrl = latestUrl;
+          log(`[Keep-Alive] Active tunnel URL updated to: ${tunnelUrl}`);
         }
-      } catch (e) {
-        // Log file might not exist or be empty yet
       }
+    } catch (e) {
+      // Log file might not exist or be empty yet
     }
 
     if (tunnelUrl) {
