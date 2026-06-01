@@ -1130,6 +1130,7 @@
       // Handle server fetch call (triggering MCP tool)
       const triggerMcpFetch = async () => {
         const minMagVal = parseFloat(filterMagEl.value);
+        const locationSearchVal = searchPlaceEl.value.trim();
         btnFetchMcp.textContent = "Syncing with server...";
         btnFetchMcp.disabled = true;
 
@@ -1137,10 +1138,16 @@
           try {
             const response = await window.openai.callTool("get_earthquakes", {
               minMagnitude: minMagVal,
+              locationSearch: locationSearchVal || undefined,
               limit: 100
             });
             if (response?.structuredContent?.earthquakes) {
-              earthquakes = response.structuredContent.earthquakes;
+              const newEqs = response.structuredContent.earthquakes;
+              // Merge and deduplicate by id to preserve previously loaded data ranges
+              const merged = [...earthquakes, ...newEqs];
+              const uniqueMap = new Map();
+              merged.forEach(eq => uniqueMap.set(eq.id, eq));
+              earthquakes = Array.from(uniqueMap.values());
               applyFilters();
             }
           } catch (e) {
@@ -1153,7 +1160,6 @@
           // Local sandbox mode simulation
           setTimeout(() => {
             alert(`[MCP Offline] Simulating server fetch with minMagnitude: ${minMagVal}. Generating updated dataset.`);
-            earthquakes = earthquakes.filter(e => e.magnitude >= minMagVal);
             applyFilters();
             btnFetchMcp.textContent = "Server Fetch (USGS)";
             btnFetchMcp.disabled = false;
