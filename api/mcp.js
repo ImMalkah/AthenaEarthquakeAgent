@@ -63,6 +63,7 @@ function createEarthquakeServer(req) {
         startTime: z.string().optional(),
         endTime: z.string().optional(),
         limit: z.coerce.number().optional().default(100),
+        locationSearch: z.string().optional().describe("Filter by place name or region, e.g. 'Chile', 'Japan', 'California'"),
       },
       _meta: {
         "openai/outputTemplate": "ui://widget/earthquake.html",
@@ -75,6 +76,7 @@ function createEarthquakeServer(req) {
       const minMagnitude = args?.minMagnitude ?? 2.5;
       const maxMagnitude = args?.maxMagnitude;
       const limit = args?.limit ?? 100;
+      const locationSearch = args?.locationSearch;
       
       // Default dates (past 7 days if not provided)
       const now = new Date();
@@ -92,7 +94,10 @@ function createEarthquakeServer(req) {
         }
         queryUrl.searchParams.set("starttime", startTime);
         queryUrl.searchParams.set("endtime", endTime);
-        queryUrl.searchParams.set("limit", String(limit));
+        
+        // If searching a location, increase initial limit so we have enough data to filter down from
+        const fetchLimit = locationSearch ? 2000 : limit;
+        queryUrl.searchParams.set("limit", String(fetchLimit));
 
         console.log(`Fetching from USGS: ${queryUrl.toString()}`);
         const response = await fetch(queryUrl.toString());
@@ -104,7 +109,7 @@ function createEarthquakeServer(req) {
         const geojson = await response.json();
         
         // Map geojson features to clean simple JSON structure
-        const earthquakes = (geojson.features || []).map(feature => {
+        let earthquakes = (geojson.features || []).map(feature => {
           return {
             id: feature.id,
             magnitude: feature.properties.mag ?? 0,
@@ -117,13 +122,20 @@ function createEarthquakeServer(req) {
           };
         });
 
-        const sortedEarthquakes = earthquakes.sort((a, b) => b.time - a.time);
+        if (locationSearch) {
+          const searchLower = locationSearch.toLowerCase().trim();
+          earthquakes = earthquakes.filter(eq => 
+            eq.place.toLowerCase().includes(searchLower)
+          );
+        }
+
+        const sortedEarthquakes = earthquakes.sort((a, b) => b.time - a.time).slice(0, limit);
 
         return {
           content: [
             {
               type: "text",
-              text: `Retrieved ${sortedEarthquakes.length} earthquakes matching criteria (Magnitude >= ${minMagnitude}, Time range: ${new Date(startTime).toLocaleDateString()} to ${new Date(endTime).toLocaleDateString()}).`
+              text: `Retrieved ${sortedEarthquakes.length} earthquakes matching criteria (Location: ${locationSearch ?? "Global"}, Magnitude >= ${minMagnitude}, Time range: ${new Date(startTime).toLocaleDateString()} to ${new Date(endTime).toLocaleDateString()}).`
             }
           ],
           structuredContent: {
@@ -133,7 +145,8 @@ function createEarthquakeServer(req) {
               maxMagnitude,
               startTime,
               endTime,
-              limit
+              limit,
+              locationSearch
             }
           },
           _meta: {

@@ -727,6 +727,9 @@
           filterMagEl.value = toolOutput.query.minMagnitude;
           magValLbl.textContent = toolOutput.query.minMagnitude;
         }
+        if (toolOutput?.query?.locationSearch) {
+          searchPlaceEl.value = toolOutput.query.locationSearch;
+        }
 
         applyFilters();
       };
@@ -1149,6 +1152,9 @@
           if (globals.toolOutput.query?.minMagnitude) {
             filterMagEl.value = globals.toolOutput.query.minMagnitude;
             magValLbl.textContent = globals.toolOutput.query.minMagnitude;
+          }
+          if (globals.toolOutput.query?.locationSearch) {
+            searchPlaceEl.value = globals.toolOutput.query.locationSearch;
           }
           applyFilters();
         }
