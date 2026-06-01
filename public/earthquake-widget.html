@@ -705,12 +705,14 @@
       const chartDotsGroup = document.querySelector("#chart-dots");
       
       let depthFilter = "all"; // all, shallow (<50), deep (>=50)
+      let lastQuery = null;
 
       // Initialize dataset from globals
       const initData = () => {
         const toolOutput = window.openai?.toolOutput;
         if (toolOutput?.earthquakes) {
           earthquakes = toolOutput.earthquakes;
+          lastQuery = toolOutput.query || null;
         } else {
           // Dummy data fallback for local standalone testing
           earthquakes = [
@@ -720,12 +722,13 @@
             { id: "4", magnitude: 5.5, place: "South of Alaska", time: Date.now() - 3600000 * 12, depth: 110, lat: 60.1, lng: -149.2, tsunami: 0 },
             { id: "5", magnitude: 7.1, place: "Vanuatu Region", time: Date.now() - 3600000 * 24, depth: 180, lat: -15.5, lng: 167.2, tsunami: 1 }
           ];
+          lastQuery = { minMagnitude: 2.5 };
         }
         
         // Match initial slider/inputs to backend request if supplied
         if (toolOutput?.query?.minMagnitude) {
           filterMagEl.value = toolOutput.query.minMagnitude;
-          magValLbl.textContent = toolOutput.query.minMagnitude;
+          magValLbl.textContent = parseFloat(toolOutput.query.minMagnitude).toFixed(1);
         }
         if (toolOutput?.query?.locationSearch) {
           searchPlaceEl.value = toolOutput.query.locationSearch;
@@ -1143,11 +1146,19 @@
             });
             if (response?.structuredContent?.earthquakes) {
               const newEqs = response.structuredContent.earthquakes;
-              // Merge and deduplicate by id to preserve previously loaded data ranges
-              const merged = [...earthquakes, ...newEqs];
-              const uniqueMap = new Map();
-              merged.forEach(eq => uniqueMap.set(eq.id, eq));
-              earthquakes = Array.from(uniqueMap.values());
+              const query = response.structuredContent.query || {};
+              const locationChanged = lastQuery && (lastQuery.locationSearch !== query.locationSearch);
+              
+              if (locationChanged) {
+                earthquakes = newEqs;
+              } else {
+                // Merge and deduplicate by id to preserve previously loaded data ranges
+                const merged = [...earthquakes, ...newEqs];
+                const uniqueMap = new Map();
+                merged.forEach(eq => uniqueMap.set(eq.id, eq));
+                earthquakes = Array.from(uniqueMap.values());
+              }
+              lastQuery = query;
               applyFilters();
             }
           } catch (e) {
@@ -1171,11 +1182,24 @@
       const handleSetGlobals = (event) => {
         const globals = event.detail?.globals;
         if (globals?.toolOutput?.earthquakes) {
-          earthquakes = globals.toolOutput.earthquakes;
+          const newEqs = globals.toolOutput.earthquakes;
+          const query = globals.toolOutput.query || {};
+          const locationChanged = lastQuery && (lastQuery.locationSearch !== query.locationSearch);
+          
+          if (locationChanged) {
+            earthquakes = newEqs;
+          } else {
+            // Merge and deduplicate by id to preserve previously loaded data ranges
+            const merged = [...earthquakes, ...newEqs];
+            const uniqueMap = new Map();
+            merged.forEach(eq => uniqueMap.set(eq.id, eq));
+            earthquakes = Array.from(uniqueMap.values());
+          }
+          lastQuery = query;
           
           if (globals.toolOutput.query?.minMagnitude) {
             filterMagEl.value = globals.toolOutput.query.minMagnitude;
-            magValLbl.textContent = globals.toolOutput.query.minMagnitude;
+            magValLbl.textContent = parseFloat(globals.toolOutput.query.minMagnitude).toFixed(1);
           }
           if (globals.toolOutput.query?.locationSearch) {
             searchPlaceEl.value = globals.toolOutput.query.locationSearch;
