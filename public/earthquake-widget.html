@@ -942,6 +942,7 @@
         // Hide Leaflet layer if fallback map is active
         if (leafletLoaded) {
           document.querySelector("#svg-map").style.display = "none";
+          renderMapMarkersLeaflet();
           return;
         }
         document.querySelector("#svg-map").style.display = "flex";
