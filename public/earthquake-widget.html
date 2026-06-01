@@ -1080,6 +1080,10 @@
         mapMarkers.forEach(m => map.removeLayer(m.marker));
         mapMarkers = [];
 
+        if (filteredEarthquakes.length === 0) return;
+
+        const group = L.featureGroup();
+
         filteredEarthquakes.forEach(eq => {
           const color = getMagColor(eq.magnitude);
           const radius = Math.max(6, eq.magnitude * 2.5);
@@ -1091,7 +1095,7 @@
             weight: selectedId === eq.id ? 2 : 1,
             opacity: 0.8,
             fillOpacity: 0.6
-          }).addTo(map);
+          });
 
           // Popup content
           marker.bindPopup(`
@@ -1106,8 +1110,21 @@
             selectEarthquake(eq.id, true);
           });
 
+          marker.addTo(group);
           mapMarkers.push({ id: eq.id, marker });
         });
+
+        group.addTo(map);
+
+        // Fit map bounds to the markers
+        try {
+          const bounds = group.getBounds();
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8 });
+          }
+        } catch (e) {
+          console.warn("Failed to fit map bounds to markers:", e);
+        }
       };
 
       // Handle server fetch call (triggering MCP tool)

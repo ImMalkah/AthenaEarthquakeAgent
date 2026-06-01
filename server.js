@@ -103,6 +103,13 @@ function createEarthquakeServer(req = null) {
         endTime: z.string().optional(),
         limit: z.coerce.number().optional().default(100),
         locationSearch: z.string().optional().describe("Filter by place name or region, e.g. 'Chile', 'Japan', 'California'"),
+        minLatitude: z.coerce.number().optional().describe("Minimum latitude for geographic bounding box"),
+        maxLatitude: z.coerce.number().optional().describe("Maximum latitude for geographic bounding box"),
+        minLongitude: z.coerce.number().optional().describe("Minimum longitude for geographic bounding box"),
+        maxLongitude: z.coerce.number().optional().describe("Maximum longitude for geographic bounding box"),
+        latitude: z.coerce.number().optional().describe("Latitude for radial search center (used with maxRadiusKm)"),
+        longitude: z.coerce.number().optional().describe("Longitude for radial search center (used with maxRadiusKm)"),
+        maxRadiusKm: z.coerce.number().optional().describe("Maximum search radius in kilometers around the latitude/longitude center"),
       },
       _meta: {
         "openai/outputTemplate": "ui://widget/earthquake.html",
@@ -117,6 +124,14 @@ function createEarthquakeServer(req = null) {
       const maxMagnitude = args?.maxMagnitude;
       const limit = args?.limit ?? 100;
       const locationSearch = args?.locationSearch;
+      
+      const minLatitude = args?.minLatitude;
+      const maxLatitude = args?.maxLatitude;
+      const minLongitude = args?.minLongitude;
+      const maxLongitude = args?.maxLongitude;
+      const latitude = args?.latitude;
+      const longitude = args?.longitude;
+      const maxRadiusKm = args?.maxRadiusKm;
       
       const now = new Date();
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -133,6 +148,17 @@ function createEarthquakeServer(req = null) {
         }
         queryUrl.searchParams.set("starttime", startTime);
         queryUrl.searchParams.set("endtime", endTime);
+        
+        // Bounding box query params
+        if (minLatitude !== undefined) queryUrl.searchParams.set("minlatitude", String(minLatitude));
+        if (maxLatitude !== undefined) queryUrl.searchParams.set("maxlatitude", String(maxLatitude));
+        if (minLongitude !== undefined) queryUrl.searchParams.set("minlongitude", String(minLongitude));
+        if (maxLongitude !== undefined) queryUrl.searchParams.set("maxlongitude", String(maxLongitude));
+        
+        // Radial query params
+        if (latitude !== undefined) queryUrl.searchParams.set("latitude", String(latitude));
+        if (longitude !== undefined) queryUrl.searchParams.set("longitude", String(longitude));
+        if (maxRadiusKm !== undefined) queryUrl.searchParams.set("maxradiuskm", String(maxRadiusKm));
         
         // If searching a location, increase initial limit so we have enough data to filter down from
         const fetchLimit = locationSearch ? 2000 : limit;
